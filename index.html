@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Day One: Job Simulator</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--tx:#1d1d1b;--mu:#6b6a64;--ac:#2f5bea;--ok:#1a7f4b;--mid:#b06a00;--bad:#c23b3b;--bd:#e2e0d8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15151a;--card:#1f1f27;--tx:#ececf1;--mu:#9a9aa6;--ac:#7d9bff;--ok:#4cc38a;--mid:#e6a23c;--bad:#ef7b7b;--bd:#33333f;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#15151a;--card:#1f1f27;--tx:#ececf1;--mu:#9a9aa6;--ac:#7d9bff;--ok:#4cc38a;--mid:#e6a23c;--bad:#ef7b7b;--bd:#33333f;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:720px;margin:0 auto;padding:16px 16px 48px}
+h1{font-size:28px;margin:8px 0 4px}h2{margin:8px 0 6px}h3{margin:20px 0 6px}
+.mu{color:var(--mu)}small{display:block;font-size:14px;margin-top:6px;color:var(--mu)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:18px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}
+button{font:inherit;color:inherit;cursor:pointer}
+.role{text-align:left;background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px}
+.role:hover{border-color:var(--ac)}.role b{display:block;margin-top:4px}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;margin-top:8px}
+.opt:hover:not(:disabled){border-color:var(--ac)}.opt:disabled{cursor:default}
+.opt.sel{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac) inset}
+.opt.s2{border-color:var(--ok)}.opt.s1{border-color:var(--mid)}.opt.s0{border-color:var(--bad)}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:14px}
+.fb{margin-top:14px;padding:12px 14px;border-left:4px solid var(--ac);background:var(--card);border-radius:8px}
+.pri{background:var(--ac);color:#fff;border:0;border-radius:10px;padding:10px 18px;margin-top:14px;font-weight:600}
+.ghost{background:none;border:0;color:var(--ac);padding:0}
+.hd{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:8px 14px;margin:10px 0;font-size:14px}
+.msg{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:8px 0}
+.row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--bd);font-size:15px}
+input[type=range]{width:100%}
+.big{font-size:40px;font-weight:700}
+ul{padding-left:20px;margin:6px 0}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+var P=function(t,a,w){return [t,a,w]};
+var R=[
+{n:"Software Engineer",e:"💻",s:"Debug, review, handle incidents.",
+intro:"Junior developer at a food-delivery startup. Your lead assigns you a bug: coupons sometimes apply twice and totals go negative.",
+items:[
+{k:"pick",m:1,title:"Find the bug",h:2.5,text:"This is the real function from the ticket.",ask:"Tap the lines that cause the bug, then submit.",rows:[
+P("function applyCoupon(cart, code) {",0,"Just the signature."),
+P("  const c = coupons[code];",0,"Fine. Looks the coupon up."),
+P("  if (!c) return cart;",1,"Only checks the code exists, never whether a coupon is already applied."),
+P("  cart.total = cart.total - c.amount;",1,"No Math.max(0, …) so totals go negative, and it stacks on repeat calls."),
+P("  cart.coupon = code;",0,"Fine, but it should be checked above before reaching here."),
+P("  return cart; }",0,"Fine.")],
+res:"Real bugs are usually missing checks, not wrong syntax. You read code far more than you write it."},
+{k:"choice",title:"A “quick” favour",text:"Your lead pings: “Can you also fix the typo on the privacy page? 15 mins, urgent.” Your bug fix still isn’t tested.",o:[
+["Do the typo first, it’s urgent.",8,-5,0.5,"Quick win, but your ticket is now behind and untested."],
+["Say: “I’m mid-fix on the coupon bug. Can the typo wait till 3 PM, or should I switch?”",12,5,0.25,"Making the trade-off visible lets your lead decide. This is a core skill."],
+["Ignore the message.",-15,0,0,"Silence reads as unreliable. Always reply."]]},
+{k:"pick",m:1,title:"Read the logs",h:2.5,text:"Checkout fails in production. Here is the log.",ask:"Tap the line that points to the ROOT CAUSE.",rows:[
+P("[INFO] Server started on port 8080",0,"Routine."),
+P("[WARN] Slow query 2.1s on orders table",0,"Worth noting later, not the cause here."),
+P("[ERROR] TypeError: cannot read 'amount' of undefined at applyCoupon (cart.js:14)",1,"Names the exact function, file and line."),
+P("[INFO] GET /health 200",0,"Health check passing."),
+P("[ERROR] 500 on POST /checkout",0,"A symptom. Follow the stack trace, not the status code.")],
+res:"Stack traces and file:line references are your map. Learn to read them calmly."},
+{k:"choice",title:"5:45 PM: alert",text:"Production alert fires. Your merged change might be the cause.",o:[
+["Stay quiet and see if someone else notices.",-25,0,0,"If it’s traced to you later, trust collapses."],
+["Tell your lead now with what you changed, and help roll back.",15,5,1.5,"Everyone breaks production eventually. Fast, honest ownership earns respect."],
+["Quietly push an untested hotfix.",-5,-10,0.75,"Good instinct, but unreviewed fixes in an incident can make it worse."]]}],
+jar:[["Pull request (PR)","A proposed code change reviewed by teammates before merging."],["Stack trace","The list of function calls leading to an error."],["Hotfix / rollback","A fast fix, or reverting to the last good version."],["Post-mortem","A blameless write-up of what failed and how to prevent it."]],
+sk:"Reading code, debugging, asking for help early, owning mistakes.",
+yes:"You like solving puzzles and can focus for hours on one problem.",no:"You need constant variety or hate ambiguity.",
+nx:["Build one small project end-to-end and put it on GitHub.","Fix a bug in an open-source repo labelled “good first issue”.","Practise explaining your code aloud in 2 minutes."]},
+{n:"Data Analyst",e:"📊",s:"Clean data, find insights.",
+intro:"Junior analyst at an online retail company. Everyone wants numbers “by yesterday”.",
+items:[
+{k:"pick",m:1,title:"Messy orders file",h:2.5,text:"Before analysing, you scan the orders export.",ask:"Tap rows you must investigate before using this data.",rows:[
+P("1043 | Pune | ₹1,299 | 2 Mar",0,"Looks normal."),
+P("1043 | Pune | ₹1,299 | 2 Mar",1,"Exact duplicate of the row above. Would double-count revenue."),
+P("1051 | (blank) | ₹899 | 2 Mar",1,"Missing city. It will vanish from any city-level chart."),
+P("1058 | Delhi | ₹-450 | 3 Mar",1,"Negative price: a refund or an error. You must find out which."),
+P("1060 | Mumbai | ₹49,99,999 | 3 Mar",1,"Huge outlier. Might be a bulk order or a typo, but it could swing every average."),
+P("1062 | Chennai | ₹1,150 | 3 Mar",0,"Normal.")],
+res:"Cleaning is often 60–70% of the job. Flag assumptions instead of silently deleting."},
+{k:"choice",title:"The vague request",text:"The marketing head messages: “Can you pull sales numbers? Need them today.”",o:[
+["Send total sales for the whole year.",-5,-10,0.5,"You guessed the question. Expect a follow-up and a redo."],
+["Ask: “Which product and period, and what decision is this for?”",10,10,0.5,"Clarifying the question first saves hours. Analysts live by this."],
+["Build a giant dashboard to cover everything.",0,-5,2,"Impressive effort, but you burned half your day on a guess."]]},
+{k:"pick",m:0,title:"What does the data say?",h:2.5,text:"Monthly sales (₹ lakh): Jan 120, Feb 130, Mar 118. The discount campaign ended on 28 Feb. Your manager asks for conclusions.",ask:"Tap the statements the data actually SUPPORTS.",rows:[
+P("Sales fell about 9% from Feb to Mar.",1,"130 → 118 is −9.2%. Supported."),
+P("Ending the discount caused the drop.",0,"Possible, but the data only shows timing. Correlation isn’t cause."),
+P("Feb was the best of these three months.",1,"130 is the highest. Supported."),
+P("Customers are unhappy with our prices.",0,"Nothing here measures sentiment.")],
+res:"Separate “what happened” from “why it happened”. Say what you can prove."},
+{k:"choice",title:"Presenting to managers",text:"You have 5 minutes. You found 3 interesting things plus the main finding.",o:[
+["Show all 15 charts so nothing is missed.",-5,-5,1,"They wanted an answer, not an exploration."],
+["Lead with the key finding, one chart, a likely cause to test, and a next step.",15,10,1,"Insight + recommendation is what gets analysts promoted."],
+["Just email the spreadsheet.",-5,-5,0,"No story means no impact."]]}],
+jar:[["Dashboard","A live visual summary of key metrics."],["Outlier","A value far from the rest, which may be an error or a real event."],["Correlation vs causation","Two things moving together doesn’t prove one caused the other."],["SQL","The language for asking databases questions."]],
+sk:"Data cleaning, asking the right question, honest conclusions, storytelling.",
+yes:"You’re curious, detail-oriented, and like proving things with evidence.",no:"You dislike repetitive checking or explaining findings to non-technical people.",
+nx:["Learn SQL basics (SELECT, WHERE, GROUP BY, JOIN).","Clean a public dataset in Excel and write a one-page finding.","Build one dashboard and explain it in plain English."]},
+{n:"Digital Marketer",e:"📣",s:"Budgets, campaigns, results.",
+intro:"Marketing executive at a D2C skincare brand. You have ₹50,000 for a product launch and a target to prove it works.",
+items:[
+{k:"alloc",title:"Split the budget",h:2.5,text:"Allocate your launch budget. Channels have diminishing returns: the first rupees work best, then each extra rupee does less.",total:50000,ch:[
+["Google Search ads",12,"People already searching to buy, so high intent but limited volume."],
+["Meta (Instagram) ads",10,"Great reach and targeting, a solid core channel."],
+["Micro-influencers",7,"Builds trust but is slower and less trackable."],
+["Email to existing list",5,"Cheap and effective, but your list is small."]],res:"Spreading across channels beats all-in on one, until each channel saturates."},
+{k:"choice",title:"Clicks but no sales",text:"After 3 days, your best ad has 4,000 clicks and 2 purchases.",o:[
+["Double the budget. More clicks means more sales.",-10,-10,0.25,"More money into a leaky funnel just loses more."],
+["Check the landing page, price and audience, then test one change at a time.",10,10,1.5,"Clicks without sales usually means a problem after the click."],
+["Kill the campaign.",-5,-5,0,"You lose the lesson. Diagnose first."]]},
+{k:"pick",m:0,title:"Which ads to pause?",h:2.5,text:"Week one results. Budget is tight.",ask:"Tap the ads you should PAUSE.",rows:[
+P("Ad A: ₹8,000 spent, 2 sales",1,"₹4,000 per sale on a ₹1,200 product. A loss."),
+P("Ad B: ₹5,000 spent, 40 sales",0,"₹125 per sale: scale this."),
+P("Ad C: ₹6,000 spent, 1M views, 0 sales",1,"Views are a vanity metric. No sales means no value."),
+P("Ad D: ₹3,000 spent, 12 sales",0,"₹250 per sale: profitable, keep.")],
+res:"Judge by cost per sale (CAC) and return (ROAS), not views or likes."},
+{k:"choice",title:"Angry public comment",text:"A customer posts publicly about a late delivery.",o:[
+["Delete it quietly.",-10,0,0,"It looks worse, and people screenshot."],
+["Reply politely, apologise, move to DMs and tell support.",15,5,0.5,"Fast human replies often turn critics into fans."],
+["Argue the courier is at fault.",-15,0,0.5,"Customers don’t care whose fault it is."]]}],
+jar:[["CTR","Click-through rate: clicks ÷ views."],["CAC","Customer acquisition cost: spend per new customer."],["ROAS","Return on ad spend: revenue ÷ ad cost."],["Funnel","Steps from seeing an ad to buying."]],
+sk:"Budgeting, reading metrics, testing, handling public feedback.",
+yes:"You enjoy both creativity and numbers, and like fast experiments.",no:"You dislike being judged by results every week.",
+nx:["Run a tiny real campaign for a friend’s shop or your own page.","Get Google Analytics and Meta Blueprint free certifications.","Write a 1-page case study with your numbers."]},
+{n:"Product Manager",e:"🧭",s:"Decide what gets built and why.",
+intro:"Associate PM at a fintech app. Sales, support, design and the CEO all want different things this sprint.",
+items:[
+{k:"pick",m:0,title:"Sprint prioritisation",h:2.5,text:"You have capacity for TWO items this sprint.",ask:"Tap the two best items to build.",rows:[
+P("Dark mode: asked by 3 users, 2 weeks",0,"Low reach and moderate effort."),
+P("Simplify KYC upload: 38% drop-off at that step, 1 week",1,"Big measurable impact for small effort."),
+P("Referral rewards: CEO’s idea, no data, 4 weeks",0,"No evidence yet and expensive. Test the idea cheaply first."),
+P("Fix payment-failed error: hits 5% of transactions, 2 days",1,"Directly lost revenue and quick to fix."),
+P("Home screen redesign: designer’s preference, 3 weeks",0,"Opinion-led and costly.")],
+res:"Prioritise by impact ÷ effort, backed by data. Say no, and show your reasoning."},
+{k:"choice",title:"Engineers say 6 weeks",text:"You promised the KYC change in 2 weeks. Engineering says it needs 6.",o:[
+["Insist on the deadline.",-15,-5,0.5,"Pressure kills trust and quality."],
+["Ask what drives the estimate and propose a smaller first version.",15,10,1,"Cutting scope together is the PM’s superpower."],
+["Accept it and tell no one.",-10,0,0,"Surprise delays are worse than early bad news."]]},
+{k:"pick",m:0,title:"Define success",h:2.5,text:"The KYC change ships next week. How will you know it worked?",ask:"Tap the good success metrics.",rows:[
+P("KYC completion rate",1,"The direct outcome you want."),
+P("Time taken to finish KYC",1,"Shows if the experience is easier."),
+P("Number of screens redesigned",0,"Output, not outcome."),
+P("Total app downloads",0,"Unrelated to this change."),
+P("Support tickets about KYC",1,"A fall means real friction was removed.")],
+res:"Outcomes (user behaviour) beat outputs (things shipped)."},
+{k:"choice",title:"CEO wants it Friday",text:"The CEO asks to ship the half-tested change Friday for a board demo.",o:[
+["Say yes. They’re the CEO.",-5,-10,0,"If it breaks in front of the board, you own it."],
+["Share the risk and offer a safe demo build plus a full release next week.",15,10,0.5,"Give options, not just a no."],
+["Refuse flatly.",-10,5,0,"Right instinct, poor delivery."]]}],
+jar:[["Sprint","A fixed work cycle, usually 1–2 weeks."],["MVP","Minimum viable product: the smallest useful version."],["Roadmap","The plan of what gets built and when."],["Stakeholder","Anyone who cares about or is affected by your product."]],
+sk:"Prioritising, metrics, influencing without authority, saying no gracefully.",
+yes:"You like people, ambiguity, and connecting business with tech.",no:"You want clear authority or dislike persuading others.",
+nx:["Write a teardown of an app you use, with one improvement.","Learn basic SQL and funnel metrics.","Practise prioritisation with RICE on a college project."]},
+{n:"HR / Recruiter",e:"🤝",s:"Hire fairly, support people.",
+intro:"Recruiter at a growing IT services firm. You must fill 3 data-entry-to-analyst roles this month.",
+items:[
+{k:"pick",m:0,title:"Screen the resumes",h:2.5,text:"Hiring manager’s must-haves: SQL, basic Python, 0–1 year experience. Five resumes remain.",ask:"Tap the candidates to SHORTLIST.",rows:[
+P("A: BCom, SQL course, 2 data projects, basic Python",1,"Meets every must-have."),
+P("B: IIT grad, only web development, no SQL",0,"Strong college but doesn’t match the role."),
+P("C: 8 yrs experience in senior analytics",0,"Over-qualified. Likely to leave or reject the pay."),
+P("D: BSc, Python and SQL on Kaggle projects",1,"Skills evidenced by real work."),
+P("E: no skills listed, “hardworking”",0,"No evidence against the criteria.")],
+res:"Screen against agreed criteria, not brand names. It’s faster and fairer."},
+{k:"choice",title:"A nervous candidate",text:"A fresher goes blank mid-interview and apologises.",o:[
+["End the interview politely.",-5,-10,0,"Nerves aren’t inability. You lose a possibly great hire."],
+["Reassure them, rephrase the question, give a minute.",10,15,0.5,"Good interviewers reveal ability instead of anxiety."],
+["Give the answer to move on.",0,-10,0,"Now you’ve learned nothing."]]},
+{k:"pick",m:0,title:"Interview questions",h:2.5,text:"A new interviewer shares her question list for tomorrow.",ask:"Tap the questions that should be REMOVED.",rows:[
+P("“Are you planning to get married soon?”",1,"Personal and discriminatory. Never ask."),
+P("“Tell me about a time you fixed a mistake in your work.”",0,"Standard behavioural question."),
+P("“Which religion do you follow?”",1,"Illegal-risk and irrelevant to the job."),
+P("“How would you check a sales report for errors?”",0,"Job-relevant skills question."),
+P("“Do you have kids at home?”",1,"Can lead to bias against caregivers.")],
+res:"Ask only about job-relevant skills and behaviour. Consistent questions reduce bias."},
+{k:"choice",title:"Offer declined",text:"Your top candidate rejects the offer for a higher salary elsewhere.",o:[
+["Move on to the next candidate.",0,0,0,"Fine, but you learned nothing."],
+["Ask what mattered, check if there’s flexibility, keep in touch.",10,10,0.75,"Learning why improves future offers."],
+["Pressure them with a deadline.",-15,-5,0.25,"Pressure harms your employer brand."]]}],
+jar:[["JD","Job description."],["ATS","Applicant tracking system for resumes."],["Notice period","Time an employee must serve before leaving."],["Offer-to-join ratio","How many accepted offers actually start work."]],
+sk:"Screening, structured interviewing, empathy, negotiation.",
+yes:"You enjoy people, fairness and long conversations.",no:"You avoid emotional conversations or chasing people for replies.",
+nx:["Rewrite a job description for a role you want.","Run mock interviews with friends using a fixed scorecard.","Learn labour-law basics and a free ATS tool."]}];
+var app=document.getElementById("app"),role,idx,q,tr,used,L,it,picked;
+function clk(){var h=9+used,H=Math.floor(h),m=Math.round((h-H)*60),a=H>=12?"PM":"AM",x=H>12?H-12:H;return x+":"+(m<10?"0":"")+m+" "+a}
+function hdr(){return '<button class="ghost" onclick="home()">← Quit</button><div class="hd"><div>🕘 <b>'+clk()+'</b> <span class="mu">(deadline 5:00 PM)</span></div><div>🤝 Trust <b>'+tr+'</b></div><div>⭐ Quality <b>'+q+'</b></div></div>'}
+function cl(x){return Math.max(0,Math.min(100,x))}
+function ap(dt,dq,h){tr=cl(tr+dt);q=cl(q+dq);used+=h}
+function home(){role=null;app.innerHTML='<h1>Day One 🚀</h1><p class="mu">Live a real workday before choosing a career. You get a deadline, trade-offs and hands-on tasks (reading code, cleaning data, splitting budgets). Your Trust and Quality scores change with every move, and you finish with a manager’s review and a plan.</p><div class="grid">'+R.map(function(r,i){return '<button class="role" onclick="start('+i+')"><span style="font-size:28px">'+r.e+'</span><b>'+r.n+'</b><span class="mu">'+r.s+'</span></button>'}).join("")+'</div>'}
+function start(i){role=R[i];idx=0;q=50;tr=50;used=0;L=[];app.innerHTML='<button class="ghost" onclick="home()">← All roles</button><div class="card" style="margin-top:12px"><div style="font-size:40px">'+role.e+'</div><h2>'+role.n+'</h2><p>'+role.intro+'</p><p class="mu">You start at 9:00 AM with a 5:00 PM deadline. Hands-on tasks take about 2.5 hours, and every choice has a cost. You can’t do everything perfectly.</p><button class="pri" onclick="go()">Clock in</button></div>'}
+function go(){it=role.items[idx];if(!it)return fin();picked=0;app.innerHTML=hdr()+'<h2>'+it.title+'</h2><div class="msg">'+it.text+'</div><div id="b"></div><div id="r"></div>';var b=document.getElementById("b");
+if(it.k=="pick")b.innerHTML='<p class="mu">'+it.ask+'</p>'+it.rows.map(function(r,i){return '<button class="opt'+(it.m?' mono':'')+'" onclick="this.classList.toggle(\'sel\')">'+r[0]+'</button>'}).join("")+'<button class="pri" onclick="sp()">Submit</button>';
+else if(it.k=="alloc"){b.innerHTML='<p class="mu">Move the sliders to weight each channel. Your ₹'+it.total.toLocaleString("en-IN")+' is split in proportion.</p>'+it.ch.map(function(c,i){return '<div style="margin-top:10px"><div class="row" style="border:0;padding:0"><span>'+c[0]+'</span><b id="sp'+i+'"></b></div><input type="range" min="0" max="10" value="5" oninput="upd()"></div>'}).join("")+'<button class="pri" onclick="sa()">Launch campaign</button>';upd()}
+else b.innerHTML=it.o.map(function(o,i){return '<button class="opt" onclick="sc('+i+')">'+o[0]+'</button>'}).join("")}
+function sps(){var w=[].map.call(document.querySelectorAll("input[type=range]"),function(x){return +x.value}),s=w.reduce(function(a,b){return a+b},0);if(!s){w=w.map(function(){return 1});s=w.length}return w.map(function(x){return it.total*x/s})}
+function upd(){sps().forEach(function(v,i){document.getElementById("sp"+i).textContent="₹"+Math.round(v/100)*100})}
+function nxt(){return '<button class="pri" onclick="idx++;go()">'+(idx==role.items.length-1?"End of day":"Continue")+'</button>'}
+function sc(i){if(picked)return;picked=1;var o=it.o[i];ap(o[1],o[2],o[3]);var d=[];if(o[1])d.push("Trust "+(o[1]>0?"+":"")+o[1]);if(o[2])d.push("Quality "+(o[2]>0?"+":"")+o[2]);d.push(o[3]+"h");
+document.querySelectorAll(".opt").forEach(function(x,j){x.disabled=true;if(j==i)x.classList.add("sel")});L.push([it.title,o[4]]);
+document.getElementById("r").innerHTML='<div class="fb">'+o[4]+'<small>'+d.join(" · ")+'</small></div>'+nxt()}
+function sp(){if(picked)return;picked=1;var bs=document.querySelectorAll(".opt"),n=0,tp=0,fp=0;
+bs.forEach(function(x,i){var r=it.rows[i],s=x.classList.contains("sel");if(r[1])n++;if(s&&r[1])tp++;if(s&&!r[1])fp++;x.disabled=true;x.className="opt"+(it.m?" mono":"")+" s"+(s&&r[1]?2:s?0:r[1]?1:"x");x.insertAdjacentHTML("beforeend","<small>"+(s&&r[1]?"✅ ":s?"❌ ":r[1]?"⚠️ Missed: ":"")+r[2]+"</small>")});
+var sc=Math.max(0,(tp-fp)/n),dq=Math.round((sc-0.5)*30),dt=sc>=0.75?5:sc<0.4?-5:0;ap(dt,dq,it.h);L.push([it.title,tp+"/"+n+" correct"+(fp?", "+fp+" wrong pick"+(fp>1?"s":""):"")]);
+document.querySelector(".pri").remove();document.getElementById("r").innerHTML='<div class="fb"><b>You got '+tp+' of '+n+(fp?' (with '+fp+' wrong)':'')+'.</b><br>'+it.res+'<small>Quality '+(dq>=0?"+":"")+dq+' · '+it.h+'h</small></div>'+nxt()}
+function sa(){if(picked)return;picked=1;var s=sps(),T=it.total,rev=0,opt=Math.sqrt(T*it.ch.reduce(function(a,c){return a+c[1]*c[1]},0))*40,K=it.ch.reduce(function(a,c){return a+c[1]*c[1]},0),h='';
+it.ch.forEach(function(c,i){var r=40*c[1]*Math.sqrt(s[i]);rev+=r;h+='<div class="row"><span>'+c[0]+'<br><span class="mu" style="font-size:13px">Ideal '+Math.round(c[1]*c[1]/K*100)+'%, yours '+Math.round(s[i]/T*100)+'%. '+c[2]+'</span></span><span>₹'+Math.round(s[i]/100)*100+'<br>→ ₹'+Math.round(r/100)*100+'<br>'+(r/s[i]||0).toFixed(1)+'x</span></div>'});
+var sc=rev/opt,dq=Math.round((sc-0.8)*100),dt=sc>=0.92?5:sc<0.75?-5:0;dq=Math.max(-20,Math.min(15,dq));ap(dt,dq,it.h);L.push([it.title,"Return "+(rev/T).toFixed(1)+"x vs best possible "+(opt/T).toFixed(1)+"x"]);
+document.querySelector(".pri").remove();document.querySelectorAll("input").forEach(function(x){x.disabled=true});document.getElementById("r").innerHTML='<div class="fb"><b>Revenue ₹'+Math.round(rev/100)*100+' ('+(rev/T).toFixed(1)+'x return). Best possible was '+(opt/T).toFixed(1)+'x.</b>'+h+'<br>'+it.res+'<small>Quality '+(dq>=0?"+":"")+dq+' · '+it.h+'h</small></div>'+nxt()}
+function fin(){var a=Math.round((q+tr)/2),late=used>8,v=a>=70?"Strong first day. Your manager would happily give you harder work.":a>=50?"A decent start. You have clear things to improve and the right instincts in places.":"A rough day, which is exactly why you tried it here first. Review the lessons below.";
+if(tr<45)v+=" You’d need to communicate earlier and more openly.";if(q<45)v+=" Quality slipped, so slow down on the hands-on work.";if(late)v+=" You ran past the 5 PM deadline. Practise saying what you can’t fit in.";
+app.innerHTML='<div class="card"><div class="mu">'+role.e+' '+role.n+' · day complete at '+clk()+'</div><div class="big">'+a+'/100</div><p><b>Manager’s review.</b> '+v+'</p><div class="row"><span>🤝 Trust</span><b>'+tr+'</b></div><div class="row"><span>⭐ Quality</span><b>'+q+'</b></div></div>'
++'<h3>What happened today</h3><div class="card">'+L.map(function(x){return '<div class="row"><b>'+x[0]+'</b><span style="text-align:right;max-width:65%">'+x[1]+'</span></div>'}).join("")+'</div>'
++'<h3>Words you’ll hear on the job</h3><div class="card">'+role.jar.map(function(j){return '<div class="row"><b>'+j[0]+'</b><span style="text-align:right;max-width:65%">'+j[1]+'</span></div>'}).join("")+'</div>'
++'<h3>Is this role for you?</h3><div class="card"><p><b>You’ll likely enjoy it if:</b> '+role.yes+'</p><p><b>You may struggle if:</b> '+role.no+'</p><p><b>Skills you practised:</b> '+role.sk+'</p></div>'
++'<h3>Your next 3 steps</h3><div class="card"><ul>'+role.nx.map(function(x){return '<li>'+x+'</li>'}).join("")+'</ul></div><button class="pri" onclick="start('+R.indexOf(role)+')">Replay and try a different approach</button> <button class="ghost" style="margin-left:12px" onclick="home()">Try another role</button>'}
+home();
+</script>
+</body>
+</html>
